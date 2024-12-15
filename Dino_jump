@@ -1,0 +1,315 @@
+<html><head><base href="." />
+<style>
+/* All previous CSS styles remain */
+body {
+    margin: 0;
+    padding: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: #333;
+    font-family: Arial, sans-serif;
+}
+
+#gameCanvas {
+    border: 3px solid #355E3B;
+    position: relative;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    background: linear-gradient(
+        to bottom,
+        #1a4855,
+        #2d7a9c 40%,
+        #54c6eb 60%,
+        #86d6f1
+    );
+    position: relative;
+    overflow: hidden;
+}
+
+#gameCanvas::before,
+#gameCanvas::after {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 50% 50%, rgba(255,255,255,0.8) 0%, transparent 40%),
+        radial-gradient(circle at 80% 30%, rgba(255,255,255,0.7) 0%, transparent 30%),
+        radial-gradient(circle at 20% 60%, rgba(255,255,255,0.6) 0%, transparent 35%);
+    animation: cloudMove 30s linear infinite;
+}
+
+#gameCanvas::after {
+    animation-delay: -15s;
+    opacity: 0.7;
+}
+
+@keyframes cloudMove {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+
+.game-over {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+}
+
+.score {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    color: white;
+    font-size: 24px;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.play-again-btn {
+    background: #4CAF50;
+    border: none;
+    color: white;
+    padding: 15px 30px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 25px;
+    transition: all 0.3s ease;
+}
+
+.play-again-btn:hover {
+    background: #45a049;
+    transform: scale(1.05);
+    box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+</style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
+<div id="score" class="score">Score: 0</div>
+<div id="gameOver" class="game-over">
+    <h1>Game Over</h1>
+    <p>Final Score: <span id="finalScore">0</span></p>
+    <button class="play-again-btn" onclick="resetGame()">Play Again</button>
+</div>
+
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+const GROUND_HEIGHT = 70;
+const GRAVITY = 0.8;
+const JUMP_FORCE = -15;
+const GAME_SPEED = 5;
+
+let score = 0;
+let gameOver = false;
+let gameSpeed = GAME_SPEED;
+let animationFrame = 0;
+let frameCount = 0;
+
+function drawBackground() {
+    // Draw mountains
+    ctx.beginPath();
+    ctx.moveTo(0, canvas.height - GROUND_HEIGHT - 100);
+    ctx.lineTo(200, canvas.height - GROUND_HEIGHT - 200);
+    ctx.lineTo(400, canvas.height - GROUND_HEIGHT - 150);
+    ctx.lineTo(600, canvas.height - GROUND_HEIGHT - 250);
+    ctx.lineTo(800, canvas.height - GROUND_HEIGHT - 100);
+    ctx.lineTo(800, canvas.height);
+    ctx.lineTo(0, canvas.height);
+    ctx.closePath();
+    
+    const mountainGradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+    mountainGradient.addColorStop(0, '#4a6363');
+    mountainGradient.addColorStop(1, '#2d3939');
+    ctx.fillStyle = mountainGradient;
+    ctx.fill();
+
+    // Draw distant trees
+    for(let i = 0; i < 20; i++) {
+        const x = i * 40 + Math.sin(i) * 20;
+        const y = canvas.height - GROUND_HEIGHT - 80;
+        
+        ctx.fillStyle = '#1a4d1a';
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x - 20, y + 40);
+        ctx.lineTo(x + 20, y + 40);
+        ctx.closePath();
+        ctx.fill();
+    }
+}
+
+const dino = {
+    x: 50,
+    y: canvas.height - GROUND_HEIGHT - 60,
+    width: 60,
+    height: 60,
+    velocityY: 0,
+    isJumping: false,
+    spriteWidth: 24,
+    spriteHeight: 24
+};
+
+const cactus = {
+    x: canvas.width,
+    y: canvas.height - GROUND_HEIGHT - 60,
+    width: 40,
+    height: 60
+};
+
+// Load images
+const dinoImage = new Image();
+dinoImage.src = 'dino_move.png.png';
+const jumpImage = new Image();
+jumpImage.src = 'jump.png';
+const cactusImage = new Image();
+cactusImage.src = 'aviao_idle.png.png';
+
+function jump() {
+    if (!dino.isJumping && !gameOver) {
+        dino.velocityY = JUMP_FORCE;
+        dino.isJumping = true;
+    }
+}
+
+function handleKeyPress(event) {
+    if (event.code === 'Space') {
+        jump();
+    }
+}
+
+function handleClick() {
+    jump();
+}
+
+function resetGame() {
+    gameOver = false;
+    score = 0;
+    gameSpeed = GAME_SPEED;
+    dino.y = canvas.height - GROUND_HEIGHT - 60;
+    dino.velocityY = 0;
+    cactus.x = canvas.width;
+    document.getElementById('gameOver').style.display = 'none';
+}
+
+function checkCollision() {
+    const dinoHitbox = {
+        x: dino.x + 10,
+        y: dino.y + 5,
+        width: dino.width - 20,
+        height: dino.height - 10
+    };
+
+    const cactusHitbox = {
+        x: cactus.x + 5,
+        y: cactus.y + 5,
+        width: cactus.width - 10,
+        height: cactus.height - 10
+    };
+
+    return (
+        dinoHitbox.x < cactusHitbox.x + cactusHitbox.width &&
+        dinoHitbox.x + dinoHitbox.width > cactusHitbox.x &&
+        dinoHitbox.y < cactusHitbox.y + cactusHitbox.height &&
+        dinoHitbox.y + dinoHitbox.height > cactusHitbox.y
+    );
+}
+
+function updateGame() {
+    if (gameOver) return;
+
+    frameCount++;
+    if (frameCount % 6 === 0) {
+        animationFrame = (animationFrame + 1) % 6;
+    }
+
+    dino.velocityY += GRAVITY;
+    dino.y += dino.velocityY;
+
+    if (dino.y > canvas.height - GROUND_HEIGHT - dino.height) {
+        dino.y = canvas.height - GROUND_HEIGHT - dino.height;
+        dino.velocityY = 0;
+        dino.isJumping = false;
+    }
+
+    cactus.x -= gameSpeed;
+    if (cactus.x + cactus.width < 0) {
+        cactus.x = canvas.width;
+        score += 100;
+        gameSpeed += 0.2;
+    }
+
+    if (checkCollision()) {
+        gameOver = true;
+        document.getElementById('gameOver').style.display = 'block';
+        document.getElementById('finalScore').textContent = score;
+    }
+
+    document.getElementById('score').textContent = Score: ${score};
+}
+
+function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    drawBackground();
+    
+    const groundGradient = ctx.createLinearGradient(0, canvas.height - GROUND_HEIGHT, 0, canvas.height);
+    groundGradient.addColorStop(0, '#8B4513');
+    groundGradient.addColorStop(0.5, '#654321');
+    groundGradient.addColorStop(1, '#3B2507');
+    ctx.fillStyle = groundGradient;
+    ctx.fillRect(0, canvas.height - GROUND_HEIGHT, canvas.width, GROUND_HEIGHT);
+    
+    ctx.fillStyle = 'rgba(139, 69, 19, 0.4)';
+    for (let i = 0; i < canvas.width; i += 15) {
+        ctx.fillRect(i, canvas.height - GROUND_HEIGHT + Math.random() * 10, 10, 2);
+    }
+
+    ctx.save();
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+    ctx.shadowBlur = 10;
+    ctx.shadowOffsetX = 5;
+    ctx.shadowOffsetY = 5;
+    
+    if (dino.isJumping) {
+        ctx.drawImage(jumpImage, 0, 0, 24, 24, dino.x, dino.y, dino.width, dino.height);
+    } else {
+        ctx.drawImage(
+            dinoImage,
+            animationFrame * dino.spriteWidth, 0,
+            dino.spriteWidth, dino.spriteHeight,
+            dino.x, dino.y,
+            dino.width, dino.height
+        );
+    }
+    
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 15;
+    ctx.shadowOffsetX = 8;
+    ctx.shadowOffsetY = 8;
+    ctx.drawImage(cactusImage, cactus.x, cactus.y, cactus.width, cactus.height);
+    ctx.restore();
+}
+
+function gameLoop() {
+    updateGame();
+    drawGame();
+    requestAnimationFrame(gameLoop);
+}
+
+document.addEventListener('keydown', handleKeyPress);
+canvas.addEventListener('click', handleClick);
+gameLoop();
+</script>
+</body></html>
